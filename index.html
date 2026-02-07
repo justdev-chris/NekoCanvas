@@ -9,19 +9,40 @@
     <style>
         :root { --bg: #0d0d0d; --panel: #161616; --accent: #00f2ff; --text: #f0f0f0; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* SIDEBAR */
         .sidebar { width: 300px; background: var(--panel); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 15px; gap: 8px; overflow-y: auto; flex-shrink: 0; }
         h2 { color: var(--accent); margin: 0; font-size: 1.2rem; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .section { background: #222; padding: 10px; border-radius: 8px; margin-bottom: 5px; }
         label { font-size: 0.65rem; color: #888; text-transform: uppercase; display: block; margin-bottom: 5px; font-weight: bold; }
+        
+        /* BUTTONS */
         button { background: var(--accent); color: #000; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; margin-top: 2px; }
         button:hover { filter: brightness(1.2); }
         .btn-alt { background: #444; color: white; }
         .btn-danger { background: #622; color: #f99; }
         input, select { background: #111; color: #fff; border: 1px solid #444; padding: 6px; width: 100%; border-radius: 4px; box-sizing: border-box; }
-        .workspace { flex: 1; display: flex; flex-direction: column; background: #111; position: relative; }
+        
+        /* WORKSPACE */
+        .workspace { flex: 1; display: flex; flex-direction: column; background: #000; position: relative; }
         .top-bar { background: #1a1a1a; padding: 8px; border-bottom: 1px solid #333; display: flex; gap: 15px; align-items: center; font-size: 0.8rem; justify-content: center; }
-        .canvas-container-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; background: #1a1a1a; }
-        .shortcut-hint { font-size: 0.6rem; color: #555; margin-top: 5px; line-height: 1.4; }
+        
+        /* THE CANVAS AREA */
+        .canvas-container-wrapper { 
+            flex: 1; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            overflow: auto; 
+            background: #111; /* Darker background so the white canvas pops */
+            padding: 50px;
+        }
+
+        /* Forces the actual fabric canvas to be visible */
+        .canvas-container {
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border: 2px solid #333;
+        }
     </style>
 </head>
 <body>
@@ -36,6 +57,15 @@
                 <button onclick="redo()" class="btn-alt">Redo</button>
             </div>
             <button onclick="deleteObj()" class="btn-danger" style="margin-top:5px;">Delete (Del)</button>
+        </div>
+
+        <div class="section">
+            <label>Canvas Size</label>
+            <div style="display:flex; gap:5px;">
+                <input type="number" id="canW" value="800">
+                <input type="number" id="canH" value="600">
+            </div>
+            <button onclick="resizeCanvas()" class="btn-alt">Update Canvas</button>
         </div>
 
         <div class="section">
@@ -57,9 +87,13 @@
         </div>
 
         <div class="section">
-            <label>Import & Project</label>
+            <label>Import</label>
             <input type="file" id="fileIn" accept="image/*,.gif">
-            <button onclick="saveNeko()" class="btn-alt">Download .neko</button>
+        </div>
+
+        <div class="section">
+            <label>Project</label>
+            <button onclick="saveNeko()" class="btn-alt">Save .neko</button>
             <button onclick="document.getElementById('loadIn').click()" class="btn-alt">Load .neko</button>
             <input type="file" id="loadIn" accept=".neko" style="display:none">
         </div>
@@ -67,17 +101,11 @@
         <div class="section">
             <label>Export</label>
             <select id="exportFormat">
-                <option value="png">PNG (Clear)</option>
-                <option value="jpeg">JPEG (Solid)</option>
+                <option value="png">PNG</option>
+                <option value="jpeg">JPEG</option>
             </select>
             <button onclick="exportImg()">Export Image</button>
             <button onclick="exportGIF()" style="background:#f1c40f;">Export GIF</button>
-        </div>
-
-        <div class="shortcut-hint">
-            CTRL+Z: Undo | CTRL+Y: Redo<br>
-            Arrows: Nudge | Del: Remove<br>
-            SHIFT+Drag: Warp Scaling
         </div>
     </div>
 
@@ -97,7 +125,7 @@
             width: 800, height: 600, backgroundColor: '#ffffff', preserveObjectStacking: true
         });
 
-        // Forced Render Loop (Fixes GIF freeze)
+        // Loop to keep GIFs playing
         function renderLoop() {
             canvas.renderAll();
             fabric.util.requestAnimFrame(renderLoop);
@@ -136,6 +164,13 @@
             });
         }
 
+        function resizeCanvas() {
+            const w = parseInt(document.getElementById('canW').value);
+            const h = parseInt(document.getElementById('canH').value);
+            canvas.setDimensions({ width: w, height: h });
+            saveState();
+        }
+
         function toggleDraw() {
             canvas.isDrawingMode = !canvas.isDrawingMode;
             document.getElementById('drawBtn').innerText = canvas.isDrawingMode ? "Mode: Drawing" : "Mode: Selection";
@@ -161,10 +196,7 @@
 
         function unlockWarp() {
             const obj = canvas.getActiveObject();
-            if (obj) { 
-                obj.set({ lockUniScaling: false, centeredScaling: false }); 
-                canvas.renderAll(); 
-            }
+            if (obj) { obj.set({ lockUniScaling: false, centeredScaling: false }); canvas.renderAll(); }
         }
 
         function syncMove() {
@@ -181,6 +213,7 @@
             }
         }
 
+        // GIF IMPORT FIX
         document.getElementById('fileIn').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -189,9 +222,7 @@
             if (file.type === 'image/gif') {
                 gifler(url).get(function(anim) {
                     const temp = document.createElement('canvas');
-                    // Get dimensions from gifler
-                    temp.width = anim.width;
-                    temp.height = anim.height;
+                    temp.width = anim.width; temp.height = anim.height;
                     const fabGif = new fabric.Image(temp, { left: 50, top: 50 });
                     canvas.add(fabGif);
                     anim.animateInCanvas(temp);
@@ -201,12 +232,12 @@
                 fabric.Image.fromURL(url, (img) => {
                     img.scale(0.5);
                     canvas.add(img);
-                    canvas.renderAll();
                     saveState();
                 });
             }
         });
 
+        // KEYS
         window.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
             if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
@@ -267,7 +298,6 @@
 
         canvas.on('object:modified', saveState);
         canvas.on('selection:created', (e) => {
-            // Null-check added here to prevent "undefined" error
             if (!e.target) return;
             document.getElementById('offX').value = Math.round(e.target.left);
             document.getElementById('offY').value = Math.round(e.target.top);
