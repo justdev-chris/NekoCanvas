@@ -2,167 +2,231 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>NekoCanvas - Pro Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NekoCanvas Pro - 🐾</title>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://unpkg.com/gifler@0.1.0/gifler.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
-    <style>
-        :root { --bg: #0f0f0f; --panel: #1a1a1a; --accent: #00f2ff; --text: #eee; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        
-        /* Sidebar & Toolbar */
-        .sidebar { width: 250px; background: var(--panel); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 15px; gap: 10px; }
-        .toolbar { background: #222; padding: 10px; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #333; }
-        
-        .canvas-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #111; position: relative; }
-        .canvas-container { box-shadow: 0 0 50px rgba(0,0,0,0.8); }
 
-        button { background: var(--accent); color: #000; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; }
-        input, select { background: #333; color: #fff; border: 1px solid #444; padding: 5px; width: 100%; box-sizing: border-box; }
-        label { font-size: 0.7rem; color: #888; margin-top: 10px; display: block; }
+    <style>
+        :root { --bg: #0d0d0d; --panel: #161616; --accent: #00f2ff; --text: #f0f0f0; --btn-hover: #00c8d4; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
         
-        .layer-item { background: #222; padding: 5px; margin-top: 5px; border-radius: 3px; font-size: 0.8rem; display: flex; justify-content: space-between; }
+        /* Sidebar Navigation */
+        .sidebar { width: 280px; background: var(--panel); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 20px; gap: 10px; overflow-y: auto; box-shadow: 5px 0 15px rgba(0,0,0,0.5); z-index: 10; }
+        h2 { color: var(--accent); margin: 0 0 10px 0; font-size: 1.5rem; letter-spacing: 1px; }
+        
+        /* UI Components */
+        label { font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight: bold; margin-top: 15px; display: block; }
+        button { background: var(--accent); color: #000; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; margin-bottom: 5px; }
+        button:hover { background: var(--btn-hover); transform: translateY(-1px); }
+        .btn-alt { background: #333; color: white; }
+        .btn-alt:hover { background: #444; }
+        .btn-danger { background: #611; color: #ff9999; }
+        
+        input, select { background: #222; color: #fff; border: 1px solid #444; padding: 8px; width: 100%; box-sizing: border-box; border-radius: 4px; outline: none; }
+        input:focus { border-color: var(--accent); }
+
+        /* Canvas Workspace */
+        .workspace { flex: 1; display: flex; flex-direction: column; background: #111; position: relative; overflow: hidden; }
+        .top-bar { background: #1a1a1a; padding: 10px; display: flex; gap: 20px; border-bottom: 1px solid #333; align-items: center; justify-content: center; }
+        .canvas-container-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; padding: 50px; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
     </style>
 </head>
 <body>
 
     <div class="sidebar">
-        <h2 style="color:var(--accent); margin:0;">NekoCanvas</h2>
+        <h2>🐾 NekoCanvas</h2>
         
-        <label>Object Controls</label>
-        <button onclick="applyPerspective()">Apply Perspective</button>
-        <button onclick="setMesh()">Toggle Mesh Warp</button>
-        
-        <label>Brush & Style</label>
-        <input type="color" id="color" value="#00f2ff">
-        <input type="range" id="size" min="1" max="50" value="5">
-        <button onclick="toggleDraw()" id="drawBtn">Enable Drawing</button>
+        <label>Dimensions</label>
+        <div style="display: flex; gap: 5px;">
+            <input type="number" id="wIn" value="800">
+            <input type="number" id="hIn" value="600">
+        </div>
+        <button onclick="resizeCanvas()" class="btn-alt">Update Canvas Size</button>
 
-        <label>Add Content</label>
+        <label>Brush Settings</label>
+        <button onclick="toggleDraw()" id="drawBtn">Mode: Selection</button>
+        <input type="color" id="brushColor" value="#00f2ff">
+        <input type="range" id="brushSize" min="1" max="100" value="10">
+
+        <label>Manipulate</label>
+        <button onclick="applyPerspective()" class="btn-alt">Perspective Skew</button>
+        <button onclick="deleteObject()" class="btn-danger">Delete Selected</button>
+
+        <label>Import Media</label>
         <input type="file" id="fileIn" accept="image/*,.gif">
-        
-        <label>Layers</label>
-        <div id="layerList"></div>
 
-        <label>Export Project</label>
-        <button onclick="exportPNG()">PNG</button>
-        <button onclick="exportGIF()" style="background:#f1c40f; margin-top:5px;">Record & Export GIF</button>
+        <label>Project Files</label>
+        <button onclick="saveNekoProject()" class="btn-alt">Save .neko Project</button>
+        <button onclick="document.getElementById('loadIn').click()" class="btn-alt">Load .neko Project</button>
+        <input type="file" id="loadIn" accept=".neko" style="display:none">
+
+        <label>Export Final Art</label>
+        <div style="display: flex; gap: 5px;">
+            <select id="exportFormat" style="flex: 2;">
+                <option value="image/png">PNG</option>
+                <option value="image/jpeg">JPEG</option>
+                <option value="image/webp">WebP</option>
+            </select>
+            <button onclick="exportImage()" style="flex: 1;">Save</button>
+        </div>
+        <button onclick="exportGIF()" style="background:#f1c40f; color: #000;">Export Animated GIF</button>
     </div>
 
-    <div class="canvas-area">
-        <div class="toolbar">
-            <span>Translate X: <input type="number" id="tx" value="0" style="width:50px" onchange="translateObj()"></span>
-            <span>Y: <input type="number" id="ty" value="0" style="width:50px" onchange="translateObj()"></span>
+    <div class="workspace">
+        <div class="top-bar">
+            <span>Translate X: <input type="number" id="tx" value="0" style="width:60px" onchange="manualTranslate()"></span>
+            <span>Y: <input type="number" id="ty" value="0" style="width:60px" onchange="manualTranslate()"></span>
+            <span id="status" style="font-size: 0.8rem; color: #888;">Ready</span>
         </div>
-        <canvas id="c"></canvas>
+        
+        <div class="canvas-container-wrapper">
+            <canvas id="c"></canvas>
+        </div>
     </div>
 
     <script>
+        // --- 1. SETUP ---
         const canvas = new fabric.Canvas('c', {
             width: 800,
             height: 600,
-            backgroundColor: '#fff',
-            isDrawingMode: false
+            backgroundColor: '#ffffff',
+            preserveObjectStacking: true
         });
 
-        // Toggle Drawing vs Selection
-        function toggleDraw() {
-            canvas.isDrawingMode = !canvas.isDrawingMode;
-            document.getElementById('drawBtn').innerText = canvas.isDrawingMode ? "Disable Drawing" : "Enable Drawing";
-            canvas.freeDrawingBrush.color = document.getElementById('color').value;
-            canvas.freeDrawingBrush.width = parseInt(document.getElementById('size').value);
+        // --- 2. CANVAS CORE ---
+        function resizeCanvas() {
+            const w = parseInt(document.getElementById('wIn').value);
+            const h = parseInt(document.getElementById('hIn').value);
+            canvas.setWidth(w);
+            canvas.setHeight(h);
+            canvas.renderAll();
         }
 
-        // File Import (Movable Images/GIFs)
-        document.getElementById('fileIn').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const url = URL.createObjectURL(file);
+        function toggleDraw() {
+            canvas.isDrawingMode = !canvas.isDrawingMode;
+            document.getElementById('drawBtn').innerText = canvas.isDrawingMode ? "Mode: Drawing" : "Mode: Selection";
+            canvas.freeDrawingBrush.color = document.getElementById('brushColor').value;
+            canvas.freeDrawingBrush.width = parseInt(document.getElementById('brushSize').value);
+        }
 
-            if (file.type === 'image/gif') {
-                // For GIFs, we use Fabric to create an "Image" object that we update manually
-                gifler(url).get().then(anim => {
-                    anim.animateInCanvas(document.createElement('canvas')).then(gifCanvas => {
-                        const fabricGif = new fabric.Image(gifCanvas, { left: 100, top: 100 });
-                        canvas.add(fabricGif);
-                        // Animation loop for GIF inside Fabric
-                        anim.onDraw((ctx, frame) => {
-                            fabricGif.setElement(frame.buffer);
-                            canvas.renderAll();
-                        });
-                    });
-                });
-            } else {
-                fabric.Image.fromURL(url, function(img) {
-                    img.scale(0.5);
-                    canvas.add(img);
-                });
-            }
-            updateLayerList();
-        });
-
-        // Perspective / Skewing
+        // --- 3. OBJECT MANIPULATION ---
         function applyPerspective() {
             const obj = canvas.getActiveObject();
             if (obj) {
-                obj.set('skewX', 20); // Basic perspective simulation
-                obj.set('skewY', 5);
+                obj.set('skewX', obj.skewX === 0 ? 20 : 0);
                 canvas.renderAll();
             }
         }
 
-        // Translation
-        function translateObj() {
+        function manualTranslate() {
             const obj = canvas.getActiveObject();
             if (obj) {
                 obj.set('left', parseInt(document.getElementById('tx').value));
                 obj.set('top', parseInt(document.getElementById('ty').value));
+                obj.setCoords();
                 canvas.renderAll();
             }
         }
 
-        // Layer Management
-        function updateLayerList() {
-            const list = document.getElementById('layerList');
-            list.innerHTML = "";
-            canvas.getObjects().forEach((obj, i) => {
-                const div = document.createElement('div');
-                div.className = 'layer-item';
-                div.innerHTML = `<span>Layer ${i}</span> <button style="width:30px" onclick="canvas.remove(canvas.getObjects()[${i}]); updateLayerList();">X</button>`;
-                list.appendChild(div);
-            });
+        function deleteObject() {
+            const activeObjects = canvas.getActiveObjects();
+            canvas.discardActiveObject();
+            canvas.remove(...activeObjects);
         }
 
-        // GIF Exporting (Captures current canvas state)
+        // Update coordinate display when objects move
+        canvas.on('object:moving', (e) => {
+            document.getElementById('tx').value = Math.round(e.target.left);
+            document.getElementById('ty').value = Math.round(e.target.top);
+        });
+
+        // --- 4. MEDIA IMPORTS ---
+        document.getElementById('fileIn').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+
+            if (file.type === 'image/gif') {
+                gifler(url).get(function(anim) {
+                    const frameCanvas = document.createElement('canvas');
+                    const fabricGif = new fabric.Image(frameCanvas, { left: 50, top: 50 });
+                    canvas.add(fabricGif);
+                    anim.onDraw(function(ctx, frame) {
+                        frameCanvas.width = frame.width;
+                        frameCanvas.height = frame.height;
+                        ctx.drawImage(frame.buffer, 0, 0);
+                        fabricGif.setElement(frameCanvas);
+                        canvas.renderAll();
+                    });
+                });
+            } else {
+                fabric.Image.fromURL(url, function(img) {
+                    img.scaleToWidth(200);
+                    canvas.add(img);
+                    canvas.renderAll();
+                });
+            }
+        });
+
+        // --- 5. EXPORT & PROJECT FILES ---
+        function exportImage() {
+            const format = document.getElementById('exportFormat').value;
+            const ext = format.split('/')[1];
+            const dataURL = canvas.toDataURL({ format: ext, quality: 1 });
+            const link = document.createElement('a');
+            link.download = `Neko-Art.${ext}`;
+            link.href = dataURL;
+            link.click();
+        }
+
         function exportGIF() {
-            alert("Capturing 2 seconds of canvas...");
-            const gif = new GIF({ workers: 2, quality: 10 });
-            let frames = 0;
-            const interval = setInterval(() => {
+            document.getElementById('status').innerText = "Recording...";
+            const gif = new GIF({ workers: 2, quality: 10, width: canvas.width, height: canvas.height });
+            let count = 0;
+            const capture = setInterval(() => {
                 gif.addFrame(canvas.getElement(), {delay: 100, copy: true});
-                frames++;
-                if (frames > 20) {
-                    clearInterval(interval);
+                count++;
+                if (count >= 30) { // Record ~3 seconds
+                    clearInterval(capture);
+                    document.getElementById('status').innerText = "Rendering GIF...";
                     gif.on('finished', function(blob) {
                         const link = document.createElement('a');
                         link.href = URL.createObjectURL(blob);
-                        link.download = 'neko-animation.gif';
+                        link.download = 'Neko-Animation.gif';
                         link.click();
+                        document.getElementById('status').innerText = "Ready";
                     });
                     gif.render();
                 }
             }, 100);
         }
 
-        function exportPNG() {
-            const dataURL = canvas.toDataURL({ format: 'png' });
+        function saveNekoProject() {
+            const json = JSON.stringify(canvas.toJSON());
+            const blob = new Blob([json], {type: "application/json"});
             const link = document.createElement('a');
-            link.download = 'neko-art.png';
-            link.href = dataURL;
+            link.href = URL.createObjectURL(blob);
+            link.download = "project.neko";
             link.click();
         }
 
-        canvas.on('object:added', updateLayerList);
-        canvas.on('object:removed', updateLayerList);
+        document.getElementById('loadIn').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(f) {
+                const data = f.target.result;
+                canvas.loadFromJSON(data, canvas.renderAll.bind(canvas));
+            };
+            reader.readAsText(file);
+        });
+
     </script>
 </body>
 </html>
