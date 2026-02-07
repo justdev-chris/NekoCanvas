@@ -9,97 +9,83 @@
     <style>
         :root { --bg: #0d0d0d; --panel: #161616; --accent: #00f2ff; --text: #f0f0f0; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        
-        .sidebar { width: 300px; background: var(--panel); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 15px; gap: 8px; overflow-y: auto; }
-        h2 { color: var(--accent); margin: 0; font-size: 1.2rem; display: flex; justify-content: space-between; }
-        
+        .sidebar { width: 300px; background: var(--panel); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 15px; gap: 8px; overflow-y: auto; flex-shrink: 0; }
+        h2 { color: var(--accent); margin: 0; font-size: 1.2rem; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .section { background: #222; padding: 10px; border-radius: 8px; margin-bottom: 5px; }
         label { font-size: 0.65rem; color: #888; text-transform: uppercase; display: block; margin-bottom: 5px; font-weight: bold; }
-        
         button { background: var(--accent); color: #000; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; margin-top: 2px; }
         button:hover { filter: brightness(1.2); }
         .btn-alt { background: #444; color: white; }
         .btn-danger { background: #622; color: #f99; }
-
         input, select { background: #111; color: #fff; border: 1px solid #444; padding: 6px; width: 100%; border-radius: 4px; box-sizing: border-box; }
-        
         .workspace { flex: 1; display: flex; flex-direction: column; background: #111; position: relative; }
-        .top-bar { background: #1a1a1a; padding: 8px; border-bottom: 1px solid #333; display: flex; gap: 10px; align-items: center; font-size: 0.8rem; justify-content: center; }
+        .top-bar { background: #1a1a1a; padding: 8px; border-bottom: 1px solid #333; display: flex; gap: 15px; align-items: center; font-size: 0.8rem; justify-content: center; }
         .canvas-container-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; background: #1a1a1a; }
-        
-        .shortcut-list { font-size: 0.6rem; color: #666; line-height: 1.2; margin-top: 10px; }
+        .shortcut-hint { font-size: 0.6rem; color: #555; margin-top: 5px; line-height: 1.4; }
     </style>
 </head>
 <body>
 
     <div class="sidebar">
-        <h2>🐾 NekoCanvas Ultra <span id="status" style="font-size:0.6rem; opacity:0.5;">v3.0</span></h2>
+        <h2>🐾 NekoCanvas Ultra</h2>
 
         <div class="section">
-            <label>History & Actions</label>
+            <label>History</label>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
                 <button onclick="undo()" class="btn-alt">Undo</button>
                 <button onclick="redo()" class="btn-alt">Redo</button>
             </div>
-            <button onclick="deleteObject()" class="btn-danger" style="margin-top:5px;">Delete Selected</button>
-        </div>
-
-        <div class="section">
-            <label>Canvas Size</label>
-            <div style="display:flex; gap:5px;">
-                <input type="number" id="wIn" value="800">
-                <input type="number" id="hIn" value="600">
-            </div>
-            <button onclick="resizeCanvas()" class="btn-alt">Apply Size</button>
+            <button onclick="deleteObj()" class="btn-danger" style="margin-top:5px;">Delete (Del)</button>
         </div>
 
         <div class="section">
             <label>Perspective & Warp</label>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
-                <button onclick="warp('skewX')" class="btn-alt">Skew X</button>
-                <button onclick="warp('skewY')" class="btn-alt">Skew Y</button>
-                <button onclick="flip('flipX')" class="btn-alt">Flip H</button>
-                <button onclick="flip('flipY')" class="btn-alt">Flip V</button>
+                <button onclick="applyWarp('skewX')" class="btn-alt">Skew X</button>
+                <button onclick="applyWarp('skewY')" class="btn-alt">Skew Y</button>
+                <button onclick="applyFlip('flipX')" class="btn-alt">Flip H</button>
+                <button onclick="applyFlip('flipY')" class="btn-alt">Flip V</button>
             </div>
-            <button onclick="enableFreeTransform()" style="margin-top:5px;">Unlock Perspective</button>
+            <button onclick="unlockWarp()" style="margin-top:5px;">Unlock Free-Warp</button>
         </div>
 
         <div class="section">
-            <label>Drawing Tools</label>
+            <label>Brush</label>
             <button onclick="toggleDraw()" id="drawBtn">Mode: Selection</button>
-            <input type="color" id="brushColor" value="#00f2ff" style="height:30px; padding:2px;">
+            <input type="color" id="brushColor" value="#00f2ff">
             <input type="range" id="brushSize" min="1" max="100" value="10">
         </div>
 
         <div class="section">
-            <label>Import / Project</label>
+            <label>Import & Project</label>
             <input type="file" id="fileIn" accept="image/*,.gif">
-            <button onclick="saveNeko()" class="btn-alt">Save .neko</button>
+            <button onclick="saveNeko()" class="btn-alt">Download .neko</button>
             <button onclick="document.getElementById('loadIn').click()" class="btn-alt">Load .neko</button>
             <input type="file" id="loadIn" accept=".neko" style="display:none">
         </div>
 
         <div class="section">
-            <label>Export Final</label>
+            <label>Export</label>
             <select id="exportFormat">
-                <option value="png">PNG (Transparent)</option>
+                <option value="png">PNG (Clear)</option>
                 <option value="jpeg">JPEG (Solid)</option>
             </select>
-            <button onclick="exportImage()">Export Image</button>
+            <button onclick="exportImg()">Export Image</button>
             <button onclick="exportGIF()" style="background:#f1c40f;">Export GIF</button>
         </div>
 
-        <div class="shortcut-list">
-            [Del] Delete | [Ctrl+Z] Undo | [Ctrl+Y] Redo<br>
-            [Arrows] Nudge | [Shift+Drag] Perspective Warp
+        <div class="shortcut-hint">
+            CTRL+Z: Undo | CTRL+Y: Redo<br>
+            Arrows: Nudge | Del: Remove<br>
+            SHIFT+Drag: Warp Scaling
         </div>
     </div>
 
     <div class="workspace">
         <div class="top-bar">
-            <span>X: <input type="number" id="posX" style="width:50px" onchange="manualMove()"></span>
-            <span>Y: <input type="number" id="posY" style="width:50px" onchange="manualMove()"></span>
-            <span>Scale: <input type="number" id="objScale" step="0.1" style="width:50px" onchange="manualMove()"></span>
+            <span>X: <input type="number" id="offX" style="width:50px" onchange="syncMove()"></span>
+            <span>Y: <input type="number" id="offY" style="width:50px" onchange="syncMove()"></span>
+            <span>Size: <input type="number" id="offS" step="0.1" style="width:50px" onchange="syncMove()"></span>
         </div>
         <div class="canvas-container-wrapper">
             <canvas id="c"></canvas>
@@ -108,52 +94,46 @@
 
     <script>
         const canvas = new fabric.Canvas('c', {
-            width: 800,
-            height: 600,
-            backgroundColor: '#ffffff',
-            preserveObjectStacking: true
+            width: 800, height: 600, backgroundColor: '#ffffff', preserveObjectStacking: true
         });
 
-        // --- 1. HISTORY SYSTEM ---
+        // Forced Render Loop (Fixes GIF freeze)
+        function renderLoop() {
+            canvas.renderAll();
+            fabric.util.requestAnimFrame(renderLoop);
+        }
+        renderLoop();
+
         let history = [];
         let redoStack = [];
-        let isProcessing = false;
+        let locked = false;
 
         function saveState() {
-            if (isProcessing) return;
+            if (locked) return;
             history.push(JSON.stringify(canvas));
-            if (history.length > 25) history.shift();
+            if (history.length > 20) history.shift();
             redoStack = [];
         }
 
         function undo() {
             if (history.length <= 1) return;
-            isProcessing = true;
+            locked = true;
             redoStack.push(history.pop());
             canvas.loadFromJSON(history[history.length - 1], () => {
                 canvas.renderAll();
-                isProcessing = false;
+                locked = false;
             });
         }
 
         function redo() {
             if (!redoStack.length) return;
-            isProcessing = true;
+            locked = true;
             const state = redoStack.pop();
             history.push(state);
             canvas.loadFromJSON(state, () => {
                 canvas.renderAll();
-                isProcessing = false;
+                locked = false;
             });
-        }
-
-        // --- 2. TOOLS & TRANSFORMS ---
-        function resizeCanvas() {
-            canvas.setDimensions({
-                width: parseInt(document.getElementById('wIn').value),
-                height: parseInt(document.getElementById('hIn').value)
-            });
-            saveState();
         }
 
         function toggleDraw() {
@@ -163,75 +143,62 @@
             canvas.freeDrawingBrush.width = parseInt(document.getElementById('brushSize').value);
         }
 
-        function warp(prop) {
+        function deleteObj() {
+            canvas.remove(...canvas.getActiveObjects());
+            canvas.discardActiveObject();
+            saveState();
+        }
+
+        function applyWarp(prop) {
             const obj = canvas.getActiveObject();
-            if (obj) {
-                obj.set(prop, (obj[prop] || 0) + 10);
-                canvas.renderAll();
-                saveState();
+            if (obj) { obj.set(prop, (obj[prop] || 0) + 10); canvas.renderAll(); saveState(); }
+        }
+
+        function applyFlip(prop) {
+            const obj = canvas.getActiveObject();
+            if (obj) { obj.set(prop, !obj[prop]); canvas.renderAll(); saveState(); }
+        }
+
+        function unlockWarp() {
+            const obj = canvas.getActiveObject();
+            if (obj) { 
+                obj.set({ lockUniScaling: false, centeredScaling: false }); 
+                canvas.renderAll(); 
             }
         }
 
-        function flip(prop) {
-            const obj = canvas.getActiveObject();
-            if (obj) {
-                obj.set(prop, !obj[prop]);
-                canvas.renderAll();
-                saveState();
-            }
-        }
-
-        function enableFreeTransform() {
-            const obj = canvas.getActiveObject();
-            if (obj) {
-                obj.set({ lockUniScaling: false, centeredScaling: false });
-                canvas.renderAll();
-                alert("Warp Active: Hold Shift + Drag corners to distort!");
-            }
-        }
-
-        function manualMove() {
+        function syncMove() {
             const obj = canvas.getActiveObject();
             if (obj) {
                 obj.set({
-                    left: parseInt(document.getElementById('posX').value),
-                    top: parseInt(document.getElementById('posY').value),
-                    scaleX: parseFloat(document.getElementById('objScale').value),
-                    scaleY: parseFloat(document.getElementById('objScale').value)
+                    left: parseInt(document.getElementById('offX').value),
+                    top: parseInt(document.getElementById('offY').value),
+                    scaleX: parseFloat(document.getElementById('offS').value),
+                    scaleY: parseFloat(document.getElementById('offS').value)
                 }).setCoords();
                 canvas.renderAll();
                 saveState();
             }
         }
 
-        function deleteObject() {
-            canvas.remove(...canvas.getActiveObjects());
-            canvas.discardActiveObject();
-            saveState();
-        }
-
-        // --- 3. GIF FIX (NO .THEN ERROR) ---
         document.getElementById('fileIn').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
             const url = URL.createObjectURL(file);
 
             if (file.type === 'image/gif') {
-                // Correct Gifler syntax without broken promises
                 gifler(url).get(function(anim) {
-                    const tempCanvas = document.createElement('canvas');
-                    const fabricGif = new fabric.Image(tempCanvas, { left: 100, top: 100 });
-                    canvas.add(fabricGif);
-                    
-                    anim.animateInCanvas(tempCanvas);
-                    anim.onDraw(function() {
-                        fabricGif.setElement(tempCanvas);
-                        canvas.renderAll();
-                    });
+                    const temp = document.createElement('canvas');
+                    // Get dimensions from gifler
+                    temp.width = anim.width;
+                    temp.height = anim.height;
+                    const fabGif = new fabric.Image(temp, { left: 50, top: 50 });
+                    canvas.add(fabGif);
+                    anim.animateInCanvas(temp);
                     saveState();
                 });
             } else {
-                fabric.Image.fromURL(url, function(img) {
+                fabric.Image.fromURL(url, (img) => {
                     img.scale(0.5);
                     canvas.add(img);
                     canvas.renderAll();
@@ -240,32 +207,27 @@
             }
         });
 
-        // --- 4. SHORTCUTS ---
         window.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
             if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
-            
-            const active = canvas.getActiveObject();
-            if (!active) return;
-
-            if (e.key === 'Delete' || e.key === 'Backspace') deleteObject();
-
-            const step = e.shiftKey ? 10 : 1;
-            if (e.key === 'ArrowUp') active.top -= step;
-            if (e.key === 'ArrowDown') active.top += step;
-            if (e.key === 'ArrowLeft') active.left -= step;
-            if (e.key === 'ArrowRight') active.left += step;
-            active.setCoords();
+            const act = canvas.getActiveObject();
+            if (!act) return;
+            if (e.key === 'Delete' || e.key === 'Backspace') deleteObj();
+            const s = e.shiftKey ? 10 : 1;
+            if (e.key === 'ArrowUp') act.top -= s;
+            if (e.key === 'ArrowDown') act.top += s;
+            if (e.key === 'ArrowLeft') act.left -= s;
+            if (e.key === 'ArrowRight') act.left += s;
+            act.setCoords();
             canvas.renderAll();
         });
 
-        // --- 5. EXPORTS ---
         function saveNeko() {
             const blob = new Blob([JSON.stringify(canvas)], {type: "application/json"});
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = "project.neko";
-            link.click();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = "art.neko";
+            a.click();
         }
 
         document.getElementById('loadIn').addEventListener('change', function(e) {
@@ -279,27 +241,24 @@
             reader.readAsText(e.target.files[0]);
         });
 
-        function exportImage() {
-            const ext = document.getElementById('exportFormat').value;
-            const link = document.createElement('a');
-            link.download = `neko_art.${ext}`;
-            link.href = canvas.toDataURL({ format: ext });
-            link.click();
+        function exportImg() {
+            const f = document.getElementById('exportFormat').value;
+            const a = document.createElement('a');
+            a.download = `neko_export.${f}`;
+            a.href = canvas.toDataURL({ format: f });
+            a.click();
         }
 
         function exportGIF() {
-            const gif = new GIF({
-                workers: 2, quality: 10, width: canvas.width, height: canvas.height,
-                workerScript: 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js'
-            });
-            let f = 0;
-            const rec = setInterval(() => {
+            const gif = new GIF({ workers: 2, quality: 10, width: canvas.width, height: canvas.height, workerScript: 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js' });
+            let count = 0;
+            const timer = setInterval(() => {
                 gif.addFrame(canvas.getElement(), {delay: 100, copy: true});
-                if (++f >= 20) {
-                    clearInterval(rec);
+                if (++count >= 20) {
+                    clearInterval(timer);
                     gif.on('finished', (b) => {
-                        const l = document.createElement('a');
-                        l.href = URL.createObjectURL(b); l.download = 'neko_anim.gif'; l.click();
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(b); a.download = 'neko_anim.gif'; a.click();
                     });
                     gif.render();
                 }
@@ -308,12 +267,14 @@
 
         canvas.on('object:modified', saveState);
         canvas.on('selection:created', (e) => {
-            document.getElementById('posX').value = Math.round(e.target.left);
-            document.getElementById('posY').value = Math.round(e.target.top);
-            document.getElementById('objScale').value = e.target.scaleX.toFixed(2);
+            // Null-check added here to prevent "undefined" error
+            if (!e.target) return;
+            document.getElementById('offX').value = Math.round(e.target.left);
+            document.getElementById('offY').value = Math.round(e.target.top);
+            document.getElementById('offS').value = e.target.scaleX ? e.target.scaleX.toFixed(2) : 1;
         });
 
-        saveState(); // Initial snapshot
+        saveState();
     </script>
 </body>
 </html>
