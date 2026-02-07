@@ -2,60 +2,105 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>NekoCanvas Pro - 🐾</title>
+    <title>NekoCanvas Ultra - 🐾</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://unpkg.com/gifler@0.1.0/gifler.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
     <style>
         :root { --bg: #0d0d0d; --panel: #161616; --accent: #00f2ff; --text: #f0f0f0; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        .sidebar { width: 280px; background: var(--panel); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 20px; gap: 8px; overflow-y: auto; }
-        h2 { color: var(--accent); margin: 0; font-size: 1.5rem; }
-        button { background: var(--accent); color: #000; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; margin-top: 5px; }
+        
+        .sidebar { width: 300px; background: var(--panel); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 15px; gap: 8px; overflow-y: auto; }
+        h2 { color: var(--accent); margin: 0; font-size: 1.2rem; display: flex; justify-content: space-between; }
+        
+        .section { background: #222; padding: 10px; border-radius: 8px; margin-bottom: 5px; }
+        label { font-size: 0.65rem; color: #888; text-transform: uppercase; display: block; margin-bottom: 5px; font-weight: bold; }
+        
+        button { background: var(--accent); color: #000; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; margin-top: 2px; }
         button:hover { filter: brightness(1.2); }
-        .btn-alt { background: #333; color: white; }
-        input, select { background: #222; color: #fff; border: 1px solid #444; padding: 8px; width: 100%; border-radius: 4px; }
+        .btn-alt { background: #444; color: white; }
+        .btn-danger { background: #622; color: #f99; }
+
+        input, select { background: #111; color: #fff; border: 1px solid #444; padding: 6px; width: 100%; border-radius: 4px; box-sizing: border-box; }
+        
         .workspace { flex: 1; display: flex; flex-direction: column; background: #111; position: relative; }
-        .canvas-container-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; background: #222; }
-        label { font-size: 0.65rem; color: #888; text-transform: uppercase; margin-top: 10px; display: block; }
-        .shortcut-hint { font-size: 0.6rem; color: #555; margin-top: 2px; }
+        .top-bar { background: #1a1a1a; padding: 8px; border-bottom: 1px solid #333; display: flex; gap: 10px; align-items: center; font-size: 0.8rem; justify-content: center; }
+        .canvas-container-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; background: #1a1a1a; }
+        
+        .shortcut-list { font-size: 0.6rem; color: #666; line-height: 1.2; margin-top: 10px; }
     </style>
 </head>
 <body>
 
     <div class="sidebar">
-        <h2>🐾 NekoCanvas</h2>
-        
-        <label>History</label>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
-            <button onclick="undo()" class="btn-alt">Undo</button>
-            <button onclick="redo()" class="btn-alt">Redo</button>
+        <h2>🐾 NekoCanvas Ultra <span id="status" style="font-size:0.6rem; opacity:0.5;">v3.0</span></h2>
+
+        <div class="section">
+            <label>History & Actions</label>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
+                <button onclick="undo()" class="btn-alt">Undo</button>
+                <button onclick="redo()" class="btn-alt">Redo</button>
+            </div>
+            <button onclick="deleteObject()" class="btn-danger" style="margin-top:5px;">Delete Selected</button>
         </div>
 
-        <label>Transform</label>
-        <button onclick="enableWarp()" class="btn-alt">Free Warp (Shift+Drag)</button>
-        <button onclick="resetObj()" class="btn-alt">Reset</button>
+        <div class="section">
+            <label>Canvas Size</label>
+            <div style="display:flex; gap:5px;">
+                <input type="number" id="wIn" value="800">
+                <input type="number" id="hIn" value="600">
+            </div>
+            <button onclick="resizeCanvas()" class="btn-alt">Apply Size</button>
+        </div>
 
-        <label>Drawing</label>
-        <button onclick="toggleDraw()" id="drawBtn">Mode: Selection</button>
-        <input type="color" id="brushColor" value="#00f2ff">
-        <input type="range" id="brushSize" min="1" max="100" value="10">
+        <div class="section">
+            <label>Perspective & Warp</label>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
+                <button onclick="warp('skewX')" class="btn-alt">Skew X</button>
+                <button onclick="warp('skewY')" class="btn-alt">Skew Y</button>
+                <button onclick="flip('flipX')" class="btn-alt">Flip H</button>
+                <button onclick="flip('flipY')" class="btn-alt">Flip V</button>
+            </div>
+            <button onclick="enableFreeTransform()" style="margin-top:5px;">Unlock Perspective</button>
+        </div>
 
-        <label>Media</label>
-        <input type="file" id="fileIn" accept="image/*,.gif">
+        <div class="section">
+            <label>Drawing Tools</label>
+            <button onclick="toggleDraw()" id="drawBtn">Mode: Selection</button>
+            <input type="color" id="brushColor" value="#00f2ff" style="height:30px; padding:2px;">
+            <input type="range" id="brushSize" min="1" max="100" value="10">
+        </div>
 
-        <label>Export</label>
-        <button onclick="exportImage()">Export PNG</button>
-        <button onclick="exportGIF()" style="background:#f1c40f;">Export GIF</button>
-        
-        <div class="shortcut-hint">
+        <div class="section">
+            <label>Import / Project</label>
+            <input type="file" id="fileIn" accept="image/*,.gif">
+            <button onclick="saveNeko()" class="btn-alt">Save .neko</button>
+            <button onclick="document.getElementById('loadIn').click()" class="btn-alt">Load .neko</button>
+            <input type="file" id="loadIn" accept=".neko" style="display:none">
+        </div>
+
+        <div class="section">
+            <label>Export Final</label>
+            <select id="exportFormat">
+                <option value="png">PNG (Transparent)</option>
+                <option value="jpeg">JPEG (Solid)</option>
+            </select>
+            <button onclick="exportImage()">Export Image</button>
+            <button onclick="exportGIF()" style="background:#f1c40f;">Export GIF</button>
+        </div>
+
+        <div class="shortcut-list">
             [Del] Delete | [Ctrl+Z] Undo | [Ctrl+Y] Redo<br>
-            [Arrows] Nudge | [Shift+Drag] Warp
+            [Arrows] Nudge | [Shift+Drag] Perspective Warp
         </div>
     </div>
 
     <div class="workspace">
+        <div class="top-bar">
+            <span>X: <input type="number" id="posX" style="width:50px" onchange="manualMove()"></span>
+            <span>Y: <input type="number" id="posY" style="width:50px" onchange="manualMove()"></span>
+            <span>Scale: <input type="number" id="objScale" step="0.1" style="width:50px" onchange="manualMove()"></span>
+        </div>
         <div class="canvas-container-wrapper">
             <canvas id="c"></canvas>
         </div>
@@ -65,44 +110,137 @@
         const canvas = new fabric.Canvas('c', {
             width: 800,
             height: 600,
-            backgroundColor: '#ffffff'
+            backgroundColor: '#ffffff',
+            preserveObjectStacking: true
         });
 
-        // --- HISTORY SYSTEM ---
+        // --- 1. HISTORY SYSTEM ---
         let history = [];
         let redoStack = [];
-        let isRestoring = false;
+        let isProcessing = false;
 
-        function saveHistory() {
-            if (isRestoring) return;
+        function saveState() {
+            if (isProcessing) return;
             history.push(JSON.stringify(canvas));
-            if (history.length > 20) history.shift(); // Limit to 20 steps
-            redoStack = []; 
+            if (history.length > 25) history.shift();
+            redoStack = [];
         }
 
         function undo() {
             if (history.length <= 1) return;
-            isRestoring = true;
+            isProcessing = true;
             redoStack.push(history.pop());
-            const state = history[history.length - 1];
-            canvas.loadFromJSON(state, () => {
+            canvas.loadFromJSON(history[history.length - 1], () => {
                 canvas.renderAll();
-                isRestoring = false;
+                isProcessing = false;
             });
         }
 
         function redo() {
-            if (redoStack.length === 0) return;
-            isRestoring = true;
+            if (!redoStack.length) return;
+            isProcessing = true;
             const state = redoStack.pop();
             history.push(state);
             canvas.loadFromJSON(state, () => {
                 canvas.renderAll();
-                isRestoring = false;
+                isProcessing = false;
             });
         }
 
-        // --- KEYBOARD SHORTCUTS ---
+        // --- 2. TOOLS & TRANSFORMS ---
+        function resizeCanvas() {
+            canvas.setDimensions({
+                width: parseInt(document.getElementById('wIn').value),
+                height: parseInt(document.getElementById('hIn').value)
+            });
+            saveState();
+        }
+
+        function toggleDraw() {
+            canvas.isDrawingMode = !canvas.isDrawingMode;
+            document.getElementById('drawBtn').innerText = canvas.isDrawingMode ? "Mode: Drawing" : "Mode: Selection";
+            canvas.freeDrawingBrush.color = document.getElementById('brushColor').value;
+            canvas.freeDrawingBrush.width = parseInt(document.getElementById('brushSize').value);
+        }
+
+        function warp(prop) {
+            const obj = canvas.getActiveObject();
+            if (obj) {
+                obj.set(prop, (obj[prop] || 0) + 10);
+                canvas.renderAll();
+                saveState();
+            }
+        }
+
+        function flip(prop) {
+            const obj = canvas.getActiveObject();
+            if (obj) {
+                obj.set(prop, !obj[prop]);
+                canvas.renderAll();
+                saveState();
+            }
+        }
+
+        function enableFreeTransform() {
+            const obj = canvas.getActiveObject();
+            if (obj) {
+                obj.set({ lockUniScaling: false, centeredScaling: false });
+                canvas.renderAll();
+                alert("Warp Active: Hold Shift + Drag corners to distort!");
+            }
+        }
+
+        function manualMove() {
+            const obj = canvas.getActiveObject();
+            if (obj) {
+                obj.set({
+                    left: parseInt(document.getElementById('posX').value),
+                    top: parseInt(document.getElementById('posY').value),
+                    scaleX: parseFloat(document.getElementById('objScale').value),
+                    scaleY: parseFloat(document.getElementById('objScale').value)
+                }).setCoords();
+                canvas.renderAll();
+                saveState();
+            }
+        }
+
+        function deleteObject() {
+            canvas.remove(...canvas.getActiveObjects());
+            canvas.discardActiveObject();
+            saveState();
+        }
+
+        // --- 3. GIF FIX (NO .THEN ERROR) ---
+        document.getElementById('fileIn').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+
+            if (file.type === 'image/gif') {
+                // Correct Gifler syntax without broken promises
+                gifler(url).get(function(anim) {
+                    const tempCanvas = document.createElement('canvas');
+                    const fabricGif = new fabric.Image(tempCanvas, { left: 100, top: 100 });
+                    canvas.add(fabricGif);
+                    
+                    anim.animateInCanvas(tempCanvas);
+                    anim.onDraw(function() {
+                        fabricGif.setElement(tempCanvas);
+                        canvas.renderAll();
+                    });
+                    saveState();
+                });
+            } else {
+                fabric.Image.fromURL(url, function(img) {
+                    img.scale(0.5);
+                    canvas.add(img);
+                    canvas.renderAll();
+                    saveState();
+                });
+            }
+        });
+
+        // --- 4. SHORTCUTS ---
         window.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
             if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
@@ -110,13 +248,8 @@
             const active = canvas.getActiveObject();
             if (!active) return;
 
-            if (e.key === 'Delete' || e.key === 'Backspace') {
-                canvas.remove(active);
-                canvas.discardActiveObject();
-                saveHistory();
-            }
+            if (e.key === 'Delete' || e.key === 'Backspace') deleteObject();
 
-            // Arrow Nudging
             const step = e.shiftKey ? 10 : 1;
             if (e.key === 'ArrowUp') active.top -= step;
             if (e.key === 'ArrowDown') active.top += step;
@@ -126,65 +259,39 @@
             canvas.renderAll();
         });
 
-        // --- CORE FUNCTIONS ---
-        canvas.on('object:modified', saveHistory);
-        canvas.on('object:added', saveHistory);
-
-        function toggleDraw() {
-            canvas.isDrawingMode = !canvas.isDrawingMode;
-            document.getElementById('drawBtn').innerText = canvas.isDrawingMode ? "Mode: Drawing" : "Mode: Selection";
-            canvas.freeDrawingBrush.color = document.getElementById('brushColor').value;
-            canvas.freeDrawingBrush.width = parseInt(document.getElementById('brushSize').value);
+        // --- 5. EXPORTS ---
+        function saveNeko() {
+            const blob = new Blob([JSON.stringify(canvas)], {type: "application/json"});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = "project.neko";
+            link.click();
         }
 
-        function enableWarp() {
-            const obj = canvas.getActiveObject();
-            if (!obj) return;
-            obj.set({ lockUniScaling: false, centeredScaling: false });
-            canvas.renderAll();
-        }
-
-        function resetObj() {
-            const obj = canvas.getActiveObject();
-            if (obj) {
-                obj.set({ skewX: 0, skewY: 0, scaleX: 0.5, scaleY: 0.5, angle: 0 });
-                canvas.renderAll();
-                saveHistory();
-            }
-        }
-
-        // --- GIF HANDLING ---
-        document.getElementById('fileIn').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const url = URL.createObjectURL(file);
-
-            if (file.type === 'image/gif') {
-                gifler(url).animate(document.createElement('canvas')).then(player => {
-                    const fabricGif = new fabric.Image(player.canvas, { left: 100, top: 100 });
-                    canvas.add(fabricGif);
-                    player.onDraw = (ctx) => {
-                        fabricGif.setElement(player.canvas);
-                        canvas.renderAll();
-                    };
+        document.getElementById('loadIn').addEventListener('change', function(e) {
+            const reader = new FileReader();
+            reader.onload = (f) => {
+                canvas.loadFromJSON(f.target.result, () => {
+                    canvas.renderAll();
+                    saveState();
                 });
-            } else {
-                fabric.Image.fromURL(url, (img) => {
-                    img.scale(0.5);
-                    canvas.add(img);
-                });
-            }
+            };
+            reader.readAsText(e.target.files[0]);
         });
 
         function exportImage() {
+            const ext = document.getElementById('exportFormat').value;
             const link = document.createElement('a');
-            link.download = 'neko_art.png';
-            link.href = canvas.toDataURL();
+            link.download = `neko_art.${ext}`;
+            link.href = canvas.toDataURL({ format: ext });
             link.click();
         }
 
         function exportGIF() {
-            const gif = new GIF({ workers: 2, quality: 10, width: canvas.width, height: canvas.height, workerScript: 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js' });
+            const gif = new GIF({
+                workers: 2, quality: 10, width: canvas.width, height: canvas.height,
+                workerScript: 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js'
+            });
             let f = 0;
             const rec = setInterval(() => {
                 gif.addFrame(canvas.getElement(), {delay: 100, copy: true});
@@ -199,8 +306,14 @@
             }, 100);
         }
 
-        // Initial save
-        saveHistory();
+        canvas.on('object:modified', saveState);
+        canvas.on('selection:created', (e) => {
+            document.getElementById('posX').value = Math.round(e.target.left);
+            document.getElementById('posY').value = Math.round(e.target.top);
+            document.getElementById('objScale').value = e.target.scaleX.toFixed(2);
+        });
+
+        saveState(); // Initial snapshot
     </script>
 </body>
 </html>
