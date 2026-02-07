@@ -3,39 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <title>NekoCanvas Pro - 🐾</title>
-
-    <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://unpkg.com/gifler@0.1.0/gifler.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
-
     <style>
         :root { --bg: #0d0d0d; --panel: #161616; --accent: #00f2ff; --text: #f0f0f0; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        .sidebar { width: 280px; background: var(--panel); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 20px; gap: 10px; overflow-y: auto; }
+        .sidebar { width: 280px; background: var(--panel); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 20px; gap: 8px; overflow-y: auto; }
         h2 { color: var(--accent); margin: 0; font-size: 1.5rem; }
-        button { background: var(--accent); color: #000; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 5px; }
+        button { background: var(--accent); color: #000; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; margin-top: 5px; }
+        button:hover { filter: brightness(1.2); }
         .btn-alt { background: #333; color: white; }
         input, select { background: #222; color: #fff; border: 1px solid #444; padding: 8px; width: 100%; border-radius: 4px; }
         .workspace { flex: 1; display: flex; flex-direction: column; background: #111; position: relative; }
-        .canvas-container-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; padding: 20px; }
-        label { font-size: 0.7rem; color: #888; text-transform: uppercase; margin-top: 10px; display: block; }
+        .canvas-container-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; background: #222; }
+        label { font-size: 0.65rem; color: #888; text-transform: uppercase; margin-top: 10px; display: block; }
+        .shortcut-hint { font-size: 0.6rem; color: #555; margin-top: 2px; }
     </style>
 </head>
-
 <body>
 
     <div class="sidebar">
         <h2>🐾 NekoCanvas</h2>
-
-        <label>Dimensions</label>
-        <div style="display:flex; gap:5px;">
-            <input type="number" id="wIn" value="800">
-            <input type="number" id="hIn" value="600">
+        
+        <label>History</label>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
+            <button onclick="undo()" class="btn-alt">Undo</button>
+            <button onclick="redo()" class="btn-alt">Redo</button>
         </div>
-        <button onclick="resizeCanvas()" class="btn-alt">Resize</button>
 
-        <label>Tools</label>
+        <label>Transform</label>
+        <button onclick="enableWarp()" class="btn-alt">Free Warp (Shift+Drag)</button>
+        <button onclick="resetObj()" class="btn-alt">Reset</button>
+
+        <label>Drawing</label>
         <button onclick="toggleDraw()" id="drawBtn">Mode: Selection</button>
         <input type="color" id="brushColor" value="#00f2ff">
         <input type="range" id="brushSize" min="1" max="100" value="10">
@@ -43,18 +45,14 @@
         <label>Media</label>
         <input type="file" id="fileIn" accept="image/*,.gif">
 
-        <label>Project</label>
-        <button onclick="saveNekoProject()" class="btn-alt">Save .neko</button>
-        <button onclick="document.getElementById('loadIn').click()" class="btn-alt">Load .neko</button>
-        <input type="file" id="loadIn" accept=".neko" style="display:none">
-
         <label>Export</label>
-        <select id="exportFormat">
-            <option value="image/png">PNG</option>
-            <option value="image/jpeg">JPEG</option>
-        </select>
-        <button onclick="exportImage()">Export Image</button>
+        <button onclick="exportImage()">Export PNG</button>
         <button onclick="exportGIF()" style="background:#f1c40f;">Export GIF</button>
+        
+        <div class="shortcut-hint">
+            [Del] Delete | [Ctrl+Z] Undo | [Ctrl+Y] Redo<br>
+            [Arrows] Nudge | [Shift+Drag] Warp
+        </div>
     </div>
 
     <div class="workspace">
@@ -70,118 +68,139 @@
             backgroundColor: '#ffffff'
         });
 
-        function resizeCanvas() {
-            canvas.setDimensions({
-                width: parseInt(document.getElementById('wIn').value),
-                height: parseInt(document.getElementById('hIn').value)
+        // --- HISTORY SYSTEM ---
+        let history = [];
+        let redoStack = [];
+        let isRestoring = false;
+
+        function saveHistory() {
+            if (isRestoring) return;
+            history.push(JSON.stringify(canvas));
+            if (history.length > 20) history.shift(); // Limit to 20 steps
+            redoStack = []; 
+        }
+
+        function undo() {
+            if (history.length <= 1) return;
+            isRestoring = true;
+            redoStack.push(history.pop());
+            const state = history[history.length - 1];
+            canvas.loadFromJSON(state, () => {
+                canvas.renderAll();
+                isRestoring = false;
             });
         }
 
+        function redo() {
+            if (redoStack.length === 0) return;
+            isRestoring = true;
+            const state = redoStack.pop();
+            history.push(state);
+            canvas.loadFromJSON(state, () => {
+                canvas.renderAll();
+                isRestoring = false;
+            });
+        }
+
+        // --- KEYBOARD SHORTCUTS ---
+        window.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
+            if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
+            
+            const active = canvas.getActiveObject();
+            if (!active) return;
+
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                canvas.remove(active);
+                canvas.discardActiveObject();
+                saveHistory();
+            }
+
+            // Arrow Nudging
+            const step = e.shiftKey ? 10 : 1;
+            if (e.key === 'ArrowUp') active.top -= step;
+            if (e.key === 'ArrowDown') active.top += step;
+            if (e.key === 'ArrowLeft') active.left -= step;
+            if (e.key === 'ArrowRight') active.left += step;
+            active.setCoords();
+            canvas.renderAll();
+        });
+
+        // --- CORE FUNCTIONS ---
+        canvas.on('object:modified', saveHistory);
+        canvas.on('object:added', saveHistory);
+
         function toggleDraw() {
             canvas.isDrawingMode = !canvas.isDrawingMode;
-            document.getElementById('drawBtn').innerText =
-                canvas.isDrawingMode ? "Mode: Drawing" : "Mode: Selection";
-
+            document.getElementById('drawBtn').innerText = canvas.isDrawingMode ? "Mode: Drawing" : "Mode: Selection";
             canvas.freeDrawingBrush.color = document.getElementById('brushColor').value;
             canvas.freeDrawingBrush.width = parseInt(document.getElementById('brushSize').value);
         }
 
-        // --- CLEAN + FIXED GIF IMPORT ---
+        function enableWarp() {
+            const obj = canvas.getActiveObject();
+            if (!obj) return;
+            obj.set({ lockUniScaling: false, centeredScaling: false });
+            canvas.renderAll();
+        }
+
+        function resetObj() {
+            const obj = canvas.getActiveObject();
+            if (obj) {
+                obj.set({ skewX: 0, skewY: 0, scaleX: 0.5, scaleY: 0.5, angle: 0 });
+                canvas.renderAll();
+                saveHistory();
+            }
+        }
+
+        // --- GIF HANDLING ---
         document.getElementById('fileIn').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-
             const url = URL.createObjectURL(file);
 
             if (file.type === 'image/gif') {
-                const tempCanvas = document.createElement('canvas');
-                const tempCtx = tempCanvas.getContext('2d');
-
-                gifler(url).get(anim => {
-                    anim.animate(tempCanvas);
-
-                    const fabricGif = new fabric.Image(tempCanvas, {
-                        left: 100,
-                        top: 100,
-                        selectable: true
-                    });
-
+                gifler(url).animate(document.createElement('canvas')).then(player => {
+                    const fabricGif = new fabric.Image(player.canvas, { left: 100, top: 100 });
                     canvas.add(fabricGif);
-
-                    anim.onDraw = (ctx, frame) => {
-                        tempCanvas.width = frame.width;
-                        tempCanvas.height = frame.height;
-
-                        tempCtx.putImageData(frame, 0, 0);
-
-                        fabricGif.setElement(tempCanvas);
+                    player.onDraw = (ctx) => {
+                        fabricGif.setElement(player.canvas);
                         canvas.renderAll();
                     };
                 });
-
-                return;
+            } else {
+                fabric.Image.fromURL(url, (img) => {
+                    img.scale(0.5);
+                    canvas.add(img);
+                });
             }
-
-            // Normal images
-            fabric.Image.fromURL(url, (img) => {
-                img.scale(0.5);
-                canvas.add(img);
-            });
         });
 
-        // --- GIF EXPORT ---
+        function exportImage() {
+            const link = document.createElement('a');
+            link.download = 'neko_art.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
         function exportGIF() {
-            const gif = new GIF({
-                workers: 2,
-                quality: 10,
-                width: canvas.width,
-                height: canvas.height,
-                workerScript: 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js'
-            });
-
-            let frames = 0;
-            const record = setInterval(() => {
-                gif.addFrame(canvas.getElement(), { delay: 100, copy: true });
-                frames++;
-
-                if (frames >= 20) {
-                    clearInterval(record);
-
-                    gif.on('finished', (blob) => {
-                        const link = document.createElement('a');
-                        link.href = URL.createObjectURL(blob);
-                        link.download = 'neko_anim.gif';
-                        link.click();
+            const gif = new GIF({ workers: 2, quality: 10, width: canvas.width, height: canvas.height, workerScript: 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js' });
+            let f = 0;
+            const rec = setInterval(() => {
+                gif.addFrame(canvas.getElement(), {delay: 100, copy: true});
+                if (++f >= 20) {
+                    clearInterval(rec);
+                    gif.on('finished', (b) => {
+                        const l = document.createElement('a');
+                        l.href = URL.createObjectURL(b); l.download = 'neko_anim.gif'; l.click();
                     });
-
                     gif.render();
                 }
             }, 100);
         }
 
-        function exportImage() {
-            const ext = document.getElementById('exportFormat').value.split('/')[1];
-            const link = document.createElement('a');
-            link.download = `neko_art.${ext}`;
-            link.href = canvas.toDataURL({ format: ext });
-            link.click();
-        }
-
-        function saveNekoProject() {
-            const json = JSON.stringify(canvas.toJSON());
-            const blob = new Blob([json], { type: "application/json" });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = "work.neko";
-            link.click();
-        }
-
-        document.getElementById('loadIn').addEventListener('change', function(e) {
-            const reader = new FileReader();
-            reader.onload = (f) => canvas.loadFromJSON(f.target.result, () => canvas.renderAll());
-            reader.readAsText(e.target.files[0]);
-        });
+        // Initial save
+        saveHistory();
     </script>
-
 </body>
 </html>
