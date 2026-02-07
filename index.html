@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <title>NekoCanvas Pro - 🐾</title>
+
+    <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://unpkg.com/gifler@0.1.0/gifler.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
+
     <style>
         :root { --bg: #0d0d0d; --panel: #161616; --accent: #00f2ff; --text: #f0f0f0; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
@@ -19,10 +22,12 @@
         label { font-size: 0.7rem; color: #888; text-transform: uppercase; margin-top: 10px; display: block; }
     </style>
 </head>
+
 <body>
 
     <div class="sidebar">
         <h2>🐾 NekoCanvas</h2>
+
         <label>Dimensions</label>
         <div style="display:flex; gap:5px;">
             <input type="number" id="wIn" value="800">
@@ -74,41 +79,58 @@
 
         function toggleDraw() {
             canvas.isDrawingMode = !canvas.isDrawingMode;
-            document.getElementById('drawBtn').innerText = canvas.isDrawingMode ? "Mode: Drawing" : "Mode: Selection";
+            document.getElementById('drawBtn').innerText =
+                canvas.isDrawingMode ? "Mode: Drawing" : "Mode: Selection";
+
             canvas.freeDrawingBrush.color = document.getElementById('brushColor').value;
             canvas.freeDrawingBrush.width = parseInt(document.getElementById('brushSize').value);
         }
 
-        // --- FIXED GIF IMPORT ---
+        // --- CLEAN + FIXED GIF IMPORT ---
         document.getElementById('fileIn').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
+
             const url = URL.createObjectURL(file);
 
             if (file.type === 'image/gif') {
-                // Use animate to get the player directly
-                gifler(url).animate(document.createElement('canvas')).then(animator => {
-                    const frameCanvas = animator.canvas;
-                    const fabricGif = new fabric.Image(frameCanvas, { left: 100, top: 100 });
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+
+                gifler(url).get(anim => {
+                    anim.animate(tempCanvas);
+
+                    const fabricGif = new fabric.Image(tempCanvas, {
+                        left: 100,
+                        top: 100,
+                        selectable: true
+                    });
+
                     canvas.add(fabricGif);
-                    
-                    // The 'onDraw' is attached to the animator
-                    animator.onDraw = (ctx, frame) => {
-                        fabricGif.setElement(frameCanvas);
+
+                    anim.onDraw = (ctx, frame) => {
+                        tempCanvas.width = frame.width;
+                        tempCanvas.height = frame.height;
+
+                        tempCtx.putImageData(frame, 0, 0);
+
+                        fabricGif.setElement(tempCanvas);
                         canvas.renderAll();
                     };
                 });
-            } else {
-                fabric.Image.fromURL(url, (img) => {
-                    img.scale(0.5);
-                    canvas.add(img);
-                });
+
+                return;
             }
+
+            // Normal images
+            fabric.Image.fromURL(url, (img) => {
+                img.scale(0.5);
+                canvas.add(img);
+            });
         });
 
-        // --- FIXED GIF EXPORT (No external worker file needed) ---
+        // --- GIF EXPORT ---
         function exportGIF() {
-            // We use a worker from a CDN to avoid the 'worker.js' not found error
             const gif = new GIF({
                 workers: 2,
                 quality: 10,
@@ -117,19 +139,21 @@
                 workerScript: 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js'
             });
 
-            console.log("Recording...");
             let frames = 0;
             const record = setInterval(() => {
-                gif.addFrame(canvas.getElement(), {delay: 100, copy: true});
+                gif.addFrame(canvas.getElement(), { delay: 100, copy: true });
                 frames++;
+
                 if (frames >= 20) {
                     clearInterval(record);
+
                     gif.on('finished', (blob) => {
                         const link = document.createElement('a');
                         link.href = URL.createObjectURL(blob);
                         link.download = 'neko_anim.gif';
                         link.click();
                     });
+
                     gif.render();
                 }
             }, 100);
@@ -145,7 +169,7 @@
 
         function saveNekoProject() {
             const json = JSON.stringify(canvas.toJSON());
-            const blob = new Blob([json], {type: "application/json"});
+            const blob = new Blob([json], { type: "application/json" });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = "work.neko";
@@ -158,5 +182,6 @@
             reader.readAsText(e.target.files[0]);
         });
     </script>
+
 </body>
 </html>
